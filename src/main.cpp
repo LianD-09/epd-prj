@@ -28,153 +28,110 @@ const char HelloWorld[] = "Do Anh Linh ";
 const char HelloWeACtStudio[] = "Hello 123456789";
 
 // WiFi
-const char *ssid = "Do Ngoc";        // Enter your WiFi name
+const char *ssid = "Do Ngoc";      // Enter your WiFi name
 const char *password = "12346789"; // Enter WiFi password
 
 // MQTT Broker
 const char *mqtt_broker = "178.128.126.128";
-const char *topic = "epd";
+const char *broadcast_topic = "epd";
 const char *mqtt_username = "linhda";
 const char *mqtt_password = "123456";
 const int mqtt_port = 1883;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
+String client_id = "esp32-client-";
 
-void receiveMessage(char *topic, byte *payload, unsigned int length)
+void writeEPD(char *message);
+
+void callback(char *topic, byte *payload, unsigned int length)
 {
-    Serial.print("Message arrived in topic: ");
-    Serial.println(topic);
-    Serial.print("Message:");
-    for (int i = 0; i < length; i++)
-    {
-        Serial.print((char)payload[i]);
-    }
-    Serial.println();
-    Serial.println("-----------------------");
+  char message[length + 1];
+  Serial.print("Message arrived in topic: ");
+  Serial.println(topic);
+  for (int i = 0; i < length; i++)
+  {
+    Serial.print((char)payload[i]);
+    message[i] = (char)payload[i];
+  }
+  message[length] = '\0';
+
+  Serial.println();
+  Serial.println("-----------------------");
+  if (strcmp(topic, client_id.c_str()) == 0)
+  {
+    writeEPD(message);
+  }
+  else if (strcmp(topic, broadcast_topic) == 0 && strcmp(message, "list") == 0)
+  {
+    client.publish(broadcast_topic, client_id.c_str());
+  }
 }
 
 void setupMQTT()
 {
-    // Set software serial baud to 115200;
-    Serial.begin(115200);
-    // connecting to a WiFi network
-    WiFi.begin(ssid, password);
-    while (WiFi.status() != WL_CONNECTED)
+  // Set software serial baud to 115200;
+  Serial.begin(9600);
+  // connecting to a WiFi network
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.println("Connecting to WiFi..");
+  }
+  Serial.println("Connected to the WiFi network");
+  client_id += String(WiFi.macAddress());
+
+  // connecting to a mqtt broker
+  client.setServer(mqtt_broker, mqtt_port);
+  client.setCallback(callback);
+  while (!client.connected())
+  {
+    Serial.printf("The client %s connects to the public mqtt broker\n", client_id.c_str());
+    if (client.connect(client_id.c_str(), mqtt_username, mqtt_password))
     {
-        delay(500);
-        Serial.println("Connecting to WiFi..");
+      Serial.println("Public emqx mqtt broker connected");
     }
-    Serial.println("Connected to the WiFi network");
-    // connecting to a mqtt broker
-    client.setServer(mqtt_broker, mqtt_port);
-    client.setCallback(receiveMessage);
-    while (!client.connected())
+    else
     {
-        String client_id = "esp32-client-";
-        client_id += String(WiFi.macAddress());
-        Serial.printf("The client %s connects to the public mqtt broker\n", client_id.c_str());
-        if (client.connect(client_id.c_str(), mqtt_username, mqtt_password))
-        {
-            Serial.println("Public emqx mqtt broker connected");
-        }
-        else
-        {
-            Serial.print("failed with state ");
-            Serial.print(client.state());
-            delay(2000);
-        }
+      Serial.print("failed with state ");
+      Serial.print(client.state());
+      delay(2000);
     }
-    // publish and subscribe
-    Serial.println("Public emqx mqtt broker publish connected message!");
-    client.publish(topic, "Hi EMQX I'm ESP32 ^^");
-    client.subscribe(topic);
+  }
+  // publish and subscribe
+  String init_message = client_id + " connected!";
+  Serial.println("Public emqx mqtt broker publish connected message!");
+  client.publish(broadcast_topic, init_message.c_str());
+  client.subscribe(broadcast_topic);
+  client.subscribe(client_id.c_str());
 }
 
 void loopMQTT()
 {
-    client.loop();
+  client.loop();
 }
 
-void writeEPD()
+void writeEPD(char *message)
 {
   display.setRotation(1);
   display.setFont(&FreeMonoBold9pt7b);
   display.setTextColor(GxEPD_BLACK);
   int16_t tbx, tby;
   uint16_t tbw, tbh;
-  display.getTextBounds(HelloWorld, 0, 0, &tbx, &tby, &tbw, &tbh);
+  display.getTextBounds(message, 0, 0, &tbx, &tby, &tbw, &tbh);
   // center the bounding box by transposition of the origin:
   uint16_t x = ((display.width() - tbw) / 2) - tbx;
-  uint16_t y = ((display.height() - tbh) / 2) - tby;
+  uint16_t y = ((display.height() + tbh) / 2) - tby;
   display.setFullWindow();
   display.firstPage();
   do
   {
     display.fillScreen(GxEPD_WHITE);
     display.setCursor(x, y - tbh);
-    display.print(HelloWorld);
+    display.print(message);
     display.setTextColor(display.epd2.hasColor ? GxEPD_RED : GxEPD_BLACK);
-    display.getTextBounds(HelloWeACtStudio, 0, 0, &tbx, &tby, &tbw, &tbh);
-    x = ((display.width() - tbw) / 2) - tbx;
-    display.setCursor(x, y + tbh);
-    display.print(HelloWeACtStudio);
   } while (display.nextPage());
-}
-
-void helloFullScreenPartialMode()
-{
-  // Serial.println("helloFullScreenPartialMode");
-  const char fullscreen[] = "full screen update";
-  const char fpm[] = "fast partial mode";
-  const char spm[] = "slow partial mode";
-  const char npm[] = "no partial mode";
-  display.setPartialWindow(0, 0, display.width(), display.height());
-  display.setRotation(1);
-  display.setFont(&FreeMonoBold9pt7b);
-  if (display.epd2.WIDTH < 104)
-    display.setFont(0);
-  display.setTextColor(GxEPD_BLACK);
-  const char *updatemode;
-  if (display.epd2.hasFastPartialUpdate)
-  {
-    updatemode = fpm;
-  }
-  else if (display.epd2.hasPartialUpdate)
-  {
-    updatemode = spm;
-  }
-  else
-  {
-    updatemode = npm;
-  }
-  // do this outside of the loop
-  int16_t tbx, tby;
-  uint16_t tbw, tbh;
-  // center update text
-  display.getTextBounds(fullscreen, 0, 0, &tbx, &tby, &tbw, &tbh);
-  uint16_t utx = ((display.width() - tbw) / 2) - tbx;
-  uint16_t uty = ((display.height() / 4) - tbh / 2) - tby;
-  // center update mode
-  display.getTextBounds(updatemode, 0, 0, &tbx, &tby, &tbw, &tbh);
-  uint16_t umx = ((display.width() - tbw) / 2) - tbx;
-  uint16_t umy = ((display.height() * 3 / 4) - tbh / 2) - tby;
-  // center HelloWorld
-  display.getTextBounds(HelloWorld, 0, 0, &tbx, &tby, &tbw, &tbh);
-  uint16_t hwx = ((display.width() - tbw) / 2) - tbx;
-  uint16_t hwy = ((display.height() - tbh) / 2) - tby;
-  display.firstPage();
-  do
-  {
-    display.fillScreen(GxEPD_WHITE);
-    display.setCursor(hwx, hwy);
-    display.print(HelloWorld);
-    display.setCursor(utx, uty);
-    display.print(fullscreen);
-    display.setCursor(umx, umy);
-    display.print(updatemode);
-  } while (display.nextPage());
-  // Serial.println("helloFullScreenPartialMode done");
 }
 
 void showPartialUpdate()
@@ -205,32 +162,7 @@ void showPartialUpdate()
       display.fillRect(box_x, box_y, box_w, box_h, GxEPD_BLACK);
       // display.fillScreen(GxEPD_BLACK);
     } while (display.nextPage());
-    delay(2000);
-    display.firstPage();
-    do
-    {
-      display.fillRect(box_x, box_y, box_w, box_h, GxEPD_WHITE);
-    } while (display.nextPage());
-    delay(1000);
-  }
-  // return;
-  //  show updates in the update box
-  for (uint16_t r = 0; r < 4; r++)
-  {
-    display.setRotation(r);
-    display.setPartialWindow(box_x, box_y, box_w, box_h);
-    for (uint16_t i = 1; i <= 10; i += incr)
-    {
-      display.firstPage();
-      do
-      {
-        display.fillRect(box_x, box_y, box_w, box_h, GxEPD_WHITE);
-        display.setCursor(box_x, cursor_y);
-        display.print(value * i, 2);
-      } while (display.nextPage());
-      delay(500);
-    }
-    delay(1000);
+    delay(500);
     display.firstPage();
     do
     {
@@ -242,20 +174,18 @@ void showPartialUpdate()
 
 void setup()
 {
-  setupMQTT();
   pinMode(8, OUTPUT);
   digitalWrite(8, HIGH);
 
-  display.init(9600, true, 50, false);
-  // helloFullScreenPartialMode();
+  display.init(115200, true, 50, false);
   delay(1000);
   if (display.epd2.hasFastPartialUpdate)
   {
     showPartialUpdate();
     delay(1000);
   }
-  writeEPD();
   display.hibernate();
+  setupMQTT();
 }
 
 void loop()
@@ -265,6 +195,6 @@ void loop()
   delay(1000);
   digitalWrite(8, LOW);
   delay(1000);
-  
+
   loopMQTT();
 }
