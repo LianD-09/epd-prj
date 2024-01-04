@@ -24,9 +24,6 @@
 GxEPD2_BW<GxEPD2_290_BS, GxEPD2_290_BS::HEIGHT> display(GxEPD2_290_BS(/*CS=5*/ SS, /*DC=*/1, /*RST=*/2, /*BUSY=*/3)); // DEPG0290BS 128x296, SSD1680
 // GxEPD2_3C<GxEPD2_290_C90c, GxEPD2_290_C90c::HEIGHT> display(GxEPD2_290_C90c(/*CS=5*/ SS, /*DC=*/ 1, /*RST=*/ 2, /*BUSY=*/ 3)); // GDEM029C90 128x296, SSD1680
 
-const char HelloWorld[] = "Do Anh Linh ";
-const char HelloWeACtStudio[] = "Hello 123456789";
-
 // WiFi
 const char *ssid = "Do Ngoc";      // Enter your WiFi name
 const char *password = "12346789"; // Enter WiFi password
