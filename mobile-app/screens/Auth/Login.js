@@ -120,13 +120,13 @@ const styles = StyleSheet.create({
   textInput: {
     width: 220,
     fontSize: 15,
-    padding: 10,
+    padding: 8,
     color: '#6D1D3A',
   },
   loginButton: {
     width: 220,
     backgroundColor: '#3A5BB3',
-    padding: 10,
+    padding: 8,
     alignItems: 'center',
     marginTop: 25,
     borderRadius: 10,

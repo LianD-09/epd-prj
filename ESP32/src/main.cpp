@@ -1,10 +1,3 @@
-// -----------------------------------------------------------------------------------------------------------------------------
-// Dependencies: GxEPD2 của
-// Tested:  ESP32-C3 DevKitM-1 dual USB
-// Result: https://youtu.be/yVmRT403PUM
-//------------------------------------------------------------------------------------------------------------------------------
-// base class GxEPD2_GFX can be used to pass references or pointers to the display instance as parameter, uses ~1.2k more code
-// enable or disable GxEPD2_GFX base class
 #define ENABLE_GxEPD2_GFX 0
 
 #include <GxEPD2_BW.h>
@@ -29,7 +22,7 @@ const char *ssid = "Do Ngoc";      // Enter your WiFi name
 const char *password = "12346789"; // Enter WiFi password
 
 // MQTT Broker
-const char *mqtt_broker = "178.128.126.128";
+const char *mqtt_broker = "159.223.93.22";
 const char *broadcast_topic = "epd";
 const char *mqtt_username = "linhda";
 const char *mqtt_password = "123456";
@@ -91,7 +84,7 @@ void setupMQTT()
     }
     else
     {
-      Serial.print("failed with state ");
+      Serial.print("failed with state");
       Serial.print(client.state());
       delay(2000);
     }
@@ -173,7 +166,6 @@ void setup()
 {
   pinMode(8, OUTPUT);
   digitalWrite(8, HIGH);
-
   display.init(115200, true, 50, false);
   delay(1000);
   if (display.epd2.hasFastPartialUpdate)

@@ -5,8 +5,18 @@ import { Provider } from "react-redux";
 import { store } from './redux/store';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Login from './screens/Auth/Login';
 import Home from './screens/Home';
+import init from 'react_native_mqtt';
+
+init({
+  size: 10000,
+  storageBackend: AsyncStorage,
+  defaultExpires: 1000 * 3600 * 24,
+  enableCache: true,
+  sync: {}
+});
 
 const Stack = createNativeStackNavigator();
 
