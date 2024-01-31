@@ -1,6 +1,9 @@
 {
     "C_Cpp.errorSquiggles": "disabled",
     "files.associations": {
-        "string": "cpp"
+        "string": "cpp",
+        "iostream": "cpp",
+        "system_error": "cpp",
+        "string_view": "cpp"
     }
 }

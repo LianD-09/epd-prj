@@ -11,6 +11,7 @@ import {
     Image,
     Alert,
     Keyboard,
+    ScrollView,
 } from 'react-native';
 import { ActivityIndicator, Checkbox } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
@@ -18,6 +19,7 @@ import { sendMessageToTopic } from '../../services/mqttServices';
 import SelectDropdown from 'react-native-select-dropdown';
 import { getMessageEpdId } from '../../utils/messageHandle';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { ditheringGrayscale, getByteArray } from '../../services/imageService';
 
 const Actions = ({ navigation }) => {
     const dispatch = useDispatch();
@@ -26,6 +28,7 @@ const Actions = ({ navigation }) => {
     const [image, setImage] = useState(null);
     const [type, setType] = useState('Text');
     const [text, setText] = useState('');
+    const [encodeData, setEncodeData] = useState('');
     const mqtt = useSelector(state => state.mqtt);
     const client = mqtt.client;
     const epdList = useMemo(() => {
@@ -35,16 +38,26 @@ const Actions = ({ navigation }) => {
     }, [mqtt.messages]);
 
     const handlePickImage = async () => {
-        let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [16, 9],
-            quality: 1,
-            base64: true
-        });
+        setIsLoading(true);
+        try {
+            let result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [128, 296],
+                base64: true,
+            });
 
-        if (!result.canceled) {
-            setImage(result.assets[0]);
+            if (!result.canceled) {
+                setImage(result.assets[0]);
+                const res = await getByteArray(result.assets[0].base64);
+                setEncodeData(ditheringGrayscale(res.pixels));
+            }
+        }
+        catch (e) {
+            console.log(e);
+        }
+        finally {
+            setIsLoading(false);
         }
     };
 
@@ -63,7 +76,10 @@ const Actions = ({ navigation }) => {
 
         try {
             setIsLoading(true);
-            sendMessageToTopic(client, epdId, type === 'Text' ? text : image.base64)
+            sendMessageToTopic(
+                client, 
+                epdId + '@' + (type === 'Text' ? 'text' : 'image'), 
+                type === 'Text' ? text : encodeData)
         }
         catch (e) {
             console.log(e);
@@ -77,70 +93,76 @@ const Actions = ({ navigation }) => {
         isLoading
             ? <ActivityIndicator size="large" color='green' style={styles.loading} />
             : <View style={styles.container}>
-                <View style={styles.header}>
-                    <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                        <Text style={{ fontSize: 15, fontWeight: 800 }}>EPD:</Text>
-                        <View style={styles.inputView}>
-                            <SelectDropdown
-                                data={epdList}
-                                buttonTextStyle={{ fontSize: 15 }}
-                                buttonStyle={styles.textSelect}
-                                onSelect={(item) => {
-                                    setEpdId(item);
-                                }}
-                                renderDropdownIcon={() => <MaterialIcons name='arrow-drop-down' color={'#484848'} size={26} />}
-                            />
+                <ScrollView
+                    contentContainerStyle={styles.scrollContainer}
+                >
+                    <View style={styles.header}>
+                        <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <Text style={{ fontSize: 15, fontWeight: 800 }}>EPD:</Text>
+                            <View style={styles.inputView}>
+                                <SelectDropdown
+                                    data={epdList}
+                                    buttonTextStyle={{ fontSize: 15 }}
+                                    buttonStyle={styles.textSelect}
+                                    defaultValue={epdId}
+                                    onSelect={(item) => {
+                                        setEpdId(item);
+                                    }}
+                                    renderDropdownIcon={() => <MaterialIcons name='arrow-drop-down' color={'#484848'} size={26} />}
+                                />
 
+                            </View>
+                        </View>
+                        <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <Text style={{ fontSize: 15, fontWeight: 800 }}>Type:</Text>
+                            <View style={styles.inputView}>
+                                <SelectDropdown
+                                    data={['Text', 'Image']}
+                                    defaultValue={type}
+                                    buttonTextStyle={{ fontSize: 15 }}
+                                    buttonStyle={styles.textSelect}
+                                    onSelect={(item) => {
+                                        setType(item);
+                                    }}
+                                    renderDropdownIcon={() => <MaterialIcons name='arrow-drop-down' color={'#484848'} size={26} />}
+                                />
+
+                            </View>
                         </View>
                     </View>
-                    <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                        <Text style={{ fontSize: 15, fontWeight: 800 }}>Type:</Text>
-                        <View style={styles.inputView}>
-                            <SelectDropdown
-                                data={['Text', 'Image']}
-                                defaultValue={'Text'}
-                                buttonTextStyle={{ fontSize: 15 }}
-                                buttonStyle={styles.textSelect}
-                                onSelect={(item) => {
-                                    setType(item);
-                                }}
-                                renderDropdownIcon={() => <MaterialIcons name='arrow-drop-down' color={'#484848'} size={26} />}
-                            />
+                    <View style={{ marginTop: 20, display: 'flex', alignItems: 'center' }}>
+                        {type === 'Text' ? <>
+                            <View style={styles.inputView}>
+                                <TextInput
+                                    style={styles.textInput}
+                                    placeholder="Text"
+                                    placeholderTextColor="#bebebe"
+                                    onChangeText={text => setText(text)}
+                                    value={text}
+                                />
+                            </View>
+                            <TouchableOpacity
+                                style={styles.sendBtn}
+                                onPress={() => handleSend()}>
+                                <Text style={{ color: 'white' }}>Send</Text>
+                            </TouchableOpacity>
+                        </> : <>
+                            <TouchableOpacity
+                                style={styles.selectBtn}
+                                onPress={() => handlePickImage()}>
+                                <Text style={{ color: 'white' }}>Select Image</Text>
+                            </TouchableOpacity>
+                            {image && <Image source={{ uri: image.uri }} style={{ width: 128, height: 296, marginVertical: 10 }} />}
 
-                        </View>
+                            {image && <TouchableOpacity
+                                style={styles.sendBtn}
+                                onPress={() => handleSend()}>
+                                <Text style={{ color: 'white' }}>Send image</Text>
+                            </TouchableOpacity>}
+                        </>
+                        }
                     </View>
-                </View>
-                <View style={{ marginTop: 50, display: 'flex', alignItems: 'center' }}>
-                    {type === 'Text' ? <>
-                        <View style={styles.inputView}>
-                            <TextInput
-                                style={styles.textInput}
-                                placeholder="Text"
-                                placeholderTextColor="#bebebe"
-                                onChangeText={text => setText(text)}
-                            />
-                        </View>
-                        <TouchableOpacity
-                            style={styles.sendBtn}
-                            onPress={() => handleSend()}>
-                            <Text style={{ color: 'white' }}>Send</Text>
-                        </TouchableOpacity>
-                    </> : <>
-                        <TouchableOpacity
-                            style={styles.selectBtn}
-                            onPress={() => handlePickImage()}>
-                            <Text style={{ color: 'white' }}>Select Image</Text>
-                        </TouchableOpacity>
-                        {image && <Image source={{ uri: image.uri }} style={{ width: 200, aspectRatio: '16/9', marginVertical: 10 }} />}
-
-                        {image && <TouchableOpacity
-                            style={styles.sendBtn}
-                            onPress={() => handleSend()}>
-                            <Text style={{ color: 'white' }}>Send image</Text>
-                        </TouchableOpacity>}
-                    </>
-                    }
-                </View>
+                </ScrollView>
             </View>
     );
 };
@@ -158,6 +180,10 @@ const styles = StyleSheet.create({
     },
     container: {
         flex: 1,
+        display: 'flex'
+    },
+    scrollContainer: {
+        flexGrow: 1,
         paddingVertical: 20,
         backgroundColor: 'white',
         alignItems: 'center',

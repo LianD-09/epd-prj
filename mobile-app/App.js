@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { LogBox, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from "react-redux";
 import { store } from './redux/store';
@@ -9,6 +9,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Login from './screens/Auth/Login';
 import Home from './screens/Home';
 import init from 'react_native_mqtt';
+LogBox.ignoreAllLogs();
 
 init({
   size: 10000,

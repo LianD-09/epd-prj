@@ -62,6 +62,7 @@ const Settings = ({ navigation }) => {
             }
         }
         catch (e) {
+            Alert.prompt(e);
             console.log(e);
         }
         finally {

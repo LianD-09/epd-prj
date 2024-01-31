@@ -16,8 +16,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Settings from '../Settings';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Actions from '../Actions';
-import { setClient, setState, updateMessages } from '../../redux/slice/mqttSlice';
-import { MQTT_HOST, MQTT_PORT, BROADCAST_TOPIC } from '@env'
+import { setClient, updateMessages } from '../../redux/slice/mqttSlice';
+import { MQTT_HOST, MQTT_PORT } from '@env'
 import { isClientPublishing, isMessageForClient } from '../../utils/messageHandle';
 
 const Tab = createBottomTabNavigator();
@@ -56,6 +56,7 @@ const Home = ({ navigation }) => {
             initialRouteName='Settings'
             activeColor="#f0edf6"
             inactiveColor="#3e2465"
+            sceneContainerStyle={{ flex: 1 }}
         >
             <Tab.Screen
                 name='Settings'
